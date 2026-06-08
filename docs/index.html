@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="農薬検索">
+  <title>農薬適用作物検索</title>
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+      background: #f0f4f0;
+      color: #1a1a1a;
+    }
+
+    header {
+      background: #2d6a4f;
+      color: white;
+      padding: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    header p {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .search-bar input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .search-bar button {
+      padding: 10px 18px;
+      background: #52b788;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .search-bar button:active {
+      background: #40916c;
+    }
+
+    main {
+      padding: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .summary {
+      background: #d8f3dc;
+      border-left: 4px solid #52b788;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      color: #1b4332;
+    }
+
+    .no-result {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: #664d03;
+    }
+
+    .hint {
+      color: #555;
+      font-size: 0.9rem;
+      margin-top: 20px;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    /* タブ */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 2px solid #52b788;
+      background: white;
+      color: #2d6a4f;
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      background: #2d6a4f;
+      color: white;
+    }
+
+    /* カード */
+    .card {
+      background: white;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: #2d6a4f;
+      color: white;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    th {
+      background: #f1f8f4;
+      color: #2d6a4f;
+      padding: 7px 10px;
+      text-align: left;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 7px 10px;
+      border-top: 1px solid #e8f0ea;
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td {
+      background: #fafcfa;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .data-info {
+      font-size: 0.72rem;
+      color: #888;
+      text-align: right;
+      margin-top: 20px;
+    }
+
+    /* スクロール可能なテーブルラッパー */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🌱 農薬適用作物検索</h1>
+  <p>手持ち農薬から使える農薬を検索</p>
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="作物名を入力（例: トマト）"
+           inputmode="search" autocomplete="off">
+    <button onclick="doSearch()">検索</button>
+  </div>
+</header>
+
+<main>
+  <div id="result">
+    <p class="hint">作物名を入力して検索してください<br>（例: トマト、きゅうり、なす、いちご）</p>
+  </div>
+  <p class="data-info" id="dataInfo"></p>
+</main>
+
+<script>
+  let cache = {};
+  let dataDate = "";
+
+  // データ読み込み
+  fetch("pesticide_cache.json?v=" + Date.now())
+    .then(r => r.json())
+    .then(data => {
+      cache = data;
+      const count = Object.keys(cache).length;
+      document.getElementById("dataInfo").textContent =
+        `データ: ${count} 品目取得済み`;
+    })
+    .catch(() => {
+      document.getElementById("dataInfo").textContent = "⚠️ データ読み込みエラー";
+    });
+
+  // Enterキーで検索
+  document.getElementById("searchInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") doSearch();
+  });
+
+  function doSearch() {
+    const query = document.getElementById("searchInput").value.trim();
+    const resultDiv = document.getElementById("result");
+
+    if (!query) {
+      resultDiv.innerHTML = '<p class="hint">作物名を入力して検索してください</p>';
+      return;
+    }
+
+    if (Object.keys(cache).length === 0) {
+      resultDiv.innerHTML = '<div class="no-result">データを読み込み中です。しばらく待ってから再度お試しください。</div>';
+      return;
+    }
+
+    const q = query.toLowerCase();
+    const grouped = {};
+
+    for (const [reg, entry] of Object.entries(cache)) {
+      const name = entry["農薬名"] || "";
+      const rows = (entry["適用表"] || []).filter(r =>
+        (r["適用作物名"] || "").toLowerCase().includes(q)
+      );
+      if (rows.length > 0) {
+        grouped[name] = { rows, reg };
+      }
+    }
+
+    const pesticides = Object.keys(grouped);
+
+    if (pesticides.length === 0) {
+      resultDiv.innerHTML = `<div class="no-result">「${query}」に使える農薬は手持ちの中にありませんでした。</div>`;
+      return;
+    }
+
+    const totalRows = pesticides.reduce((s, n) => s + grouped[n].rows.length, 0);
+
+    let html = `<div class="summary">「${query}」に使える農薬: <strong>${pesticides.length} 品目 / ${totalRows} 件</strong></div>`;
+
+    // タブ
+    html += '<div class="tabs">';
+    html += `<button class="tab-btn active" onclick="showTab('__all__', this)">すべて</button>`;
+    for (const name of pesticides) {
+      const safe = name.replace(/'/g, "\\'");
+      html += `<button class="tab-btn" onclick="showTab('${safe}', this)">${name}</button>`;
+    }
+    html += '</div>';
+
+    // カード（全農薬）
+    html += '<div id="allCards">';
+    for (const name of pesticides) {
+      html += buildCard(name, grouped[name].rows);
+    }
+    html += '</div>';
+
+    // 個別カード
+    for (const name of pesticides) {
+      const id = "card_" + name.replace(/\s/g, "_");
+      html += `<div id="${id}" style="display:none">`;
+      html += buildCard(name, grouped[name].rows);
+      html += '</div>';
+    }
+
+    resultDiv.innerHTML = html;
+  }
+
+  function buildCard(name, rows) {
+    const COLS = [
+      ["適用作物名",       "作物名"],
+      ["対象病害虫・雑草名","対象病害虫・雑草"],
+      ["希釈倍数",         "希釈倍数"],
+      ["使用液量",         "使用液量"],
+      ["使用時期",         "使用時期"],
+      ["本剤の使用回数",   "使用回数"],
+      ["使用方法",         "使用方法"],
+    ];
+
+    // 空列を除外
+    const activeCols = COLS.filter(([key]) =>
+      rows.some(r => r[key] && r[key].trim() !== "")
+    );
+
+    let html = `<div class="card">`;
+    html += `<div class="card-header">🌿 ${name}</div>`;
+    html += `<div class="table-wrap"><table>`;
+    html += "<thead><tr>" + activeCols.map(([,label]) => `<th>${label}</th>`).join("") + "</tr></thead>";
+    html += "<tbody>";
+    for (const row of rows) {
+      html += "<tr>" + activeCols.map(([key]) => `<td>${row[key] || ""}</td>`).join("") + "</tr>";
+    }
+    html += "</tbody></table></div></div>";
+    return html;
+  }
+
+  function showTab(name, btn) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    document.getElementById("allCards").style.display = name === "__all__" ? "" : "none";
+
+    document.querySelectorAll('[id^="card_"]').forEach(el => {
+      el.style.display = "none";
+    });
+
+    if (name !== "__all__") {
+      const id = "card_" + name.replace(/\s/g, "_");
+      const el = document.getElementById(id);
+      if (el) el.style.display = "";
+    }
+  }
+</script>
+
+<!-- Service Worker 登録 -->
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+</script>
+
+</body>
+</html>

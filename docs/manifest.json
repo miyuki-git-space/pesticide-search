@@ -1,0 +1,17 @@
+{
+  "name": "農薬適用作物検索",
+  "short_name": "農薬検索",
+  "description": "手持ち農薬から適用作物を検索するアプリ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f0f4f0",
+  "theme_color": "#2d6a4f",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
