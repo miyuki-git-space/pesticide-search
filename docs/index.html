@@ -230,6 +230,13 @@
     if (e.key === "Enter") doSearch();
   });
 
+  // カタカナ→ひらがな変換
+  function toHiragana(str) {
+    return str.replace(/[ァ-ヶ]/g, ch =>
+      String.fromCharCode(ch.charCodeAt(0) - 0x60)
+    );
+  }
+
   function doSearch() {
     const query = document.getElementById("searchInput").value.trim();
     const resultDiv = document.getElementById("result");
@@ -244,13 +251,13 @@
       return;
     }
 
-    const q = query.toLowerCase();
+    const q = toHiragana(query.toLowerCase());
     const grouped = {};
 
     for (const [reg, entry] of Object.entries(cache)) {
       const name = entry["農薬名"] || "";
       const rows = (entry["適用表"] || []).filter(r =>
-        (r["適用作物名"] || "").toLowerCase().includes(q)
+        toHiragana((r["適用作物名"] || "").toLowerCase()).includes(q)
       );
       if (rows.length > 0) {
         grouped[name] = { rows, reg };
