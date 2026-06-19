@@ -182,6 +182,30 @@
       margin-top: 20px;
     }
 
+    .parent-section {
+      margin-top: 20px;
+      border-top: 2px dashed #b7e4c7;
+      padding-top: 14px;
+    }
+
+    .parent-section-title {
+      font-size: 0.82rem;
+      color: #40916c;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #d8f3dc;
+      color: #1b4332;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 6px;
+      font-weight: normal;
+    }
+
     /* スクロール可能なテーブルラッパー */
     .table-wrap {
       overflow-x: auto;
@@ -258,6 +282,167 @@
     return str;
   }
 
+  // ─── 上位分類マッピング ───
+  // キー: ユーザーが入力する作物名（ひらがな or 漢字混じり）
+  // 値: その作物が属する上位分類名（データベース上の表記）
+  const CROP_PARENTS = {
+    // なばな類（非結球あぶらな科葉菜類の一群）
+    'つぼみ菜': ['なばな類', '非結球あぶらな科葉菜類', '野菜類'],
+    'つぼみな': ['なばな類', '非結球あぶらな科葉菜類', '野菜類'],
+    'はなっこりー': ['なばな類', '非結球あぶらな科葉菜類', '野菜類'],
+    'なばな': ['なばな類', '非結球あぶらな科葉菜類', '野菜類'],
+    'のらぼうな': ['なばな類', '非結球あぶらな科葉菜類', '野菜類'],
+    'おーたむぽえむ': ['なばな類', '非結球あぶらな科葉菜類', '野菜類'],
+    'あすっこ': ['なばな類', '非結球あぶらな科葉菜類', '野菜類'],
+    // 非結球あぶらな科葉菜類（なばな類以外）
+    'こまつな': ['非結球あぶらな科葉菜類', '野菜類'],
+    'みずな': ['非結球あぶらな科葉菜類', '野菜類'],
+    'ちんげんさい': ['非結球あぶらな科葉菜類', '野菜類'],
+    'のざわな': ['非結球あぶらな科葉菜類', '野菜類'],
+    'ひろしまな': ['非結球あぶらな科葉菜類', '野菜類'],
+    'けーる': ['非結球あぶらな科葉菜類', '野菜類'],
+    'からしな': ['非結球あぶらな科葉菜類', '野菜類'],
+    'たかな': ['非結球あぶらな科葉菜類', '野菜類'],
+    'るっこら': ['非結球あぶらな科葉菜類', '野菜類'],
+    // 結球あぶらな科葉菜類
+    'きゃべつ': ['結球あぶらな科葉菜類', '野菜類'],
+    'はくさい': ['結球あぶらな科葉菜類', '野菜類'],
+    'めきゃべつ': ['結球あぶらな科葉菜類', '野菜類'],
+    // はなやさい類
+    'ぶろっこりー': ['はなやさい類', '野菜類'],
+    'かりふらわー': ['はなやさい類', '野菜類'],
+    // うり類
+    'きゅうり': ['うり類(未成熟)', '野菜類'],
+    'ずっきーに': ['うり類(未成熟)', '野菜類'],
+    'にがうり': ['うり類(未成熟)', '野菜類'],
+    'かぼちゃ': ['うり類(成熟)', '野菜類'],
+    'すいか': ['うり類(成熟)', '野菜類'],
+    'めろん': ['うり類(成熟)', '野菜類'],
+    'まくわうり': ['うり類(成熟)', '野菜類'],
+    // ぴーまん及びとうがらし類
+    'ぴーまん': ['ぴーまん及びとうがらし類', '野菜類'],
+    'とうがらし': ['とうがらし類', 'ぴーまん及びとうがらし類', '野菜類'],
+    // 豆類
+    'えだまめ': ['豆類(未成熟)', '野菜類'],
+    'さやいんげん': ['豆類(未成熟)', '野菜類'],
+    'さやえんどう': ['豆類(未成熟)', '野菜類'],
+    // その他野菜
+    'とまと': ['野菜類'],
+    'みにとまと': ['野菜類'],
+    'なす': ['野菜類'],
+    'ほうれんそう': ['野菜類'],
+    'だいこん': ['野菜類'],
+    'にんじん': ['野菜類'],
+    'ねぎ': ['野菜類'],
+    'たまねぎ': ['野菜類'],
+    'れたす': ['野菜類'],
+    'あすぱらがす': ['野菜類'],
+  };
+
+  // カテゴリ名を「ベース名」と「除外リスト」に分解
+  function parseCategoryName(cropName) {
+    const lastExclude = cropName.lastIndexOf('を除く');
+    if (lastExclude === -1) return { base: cropName.trim(), exclusions: [] };
+
+    // 対応する開き括弧を探す
+    let parenStart = -1, depth = 0;
+    for (let i = lastExclude; i >= 0; i--) {
+      const ch = cropName[i];
+      if (ch === ')' || ch === '）') depth++;
+      else if (ch === '(' || ch === '（') {
+        if (depth === 0) { parenStart = i; break; }
+        depth--;
+      }
+    }
+    if (parenStart === -1) return { base: cropName.trim(), exclusions: [] };
+
+    const base = cropName.substring(0, parenStart).trim();
+    const inner = cropName.substring(parenStart + 1, lastExclude).trim();
+
+    if (inner.includes('ただし')) {
+      const tadashiIdx = inner.indexOf('ただし');
+      const descriptor = inner.substring(0, tadashiIdx).replace(/[、,，､]$/, '').trim();
+      const rest = inner.substring(tadashiIdx + 3).replace(/^[、,，､]/, '').trim();
+      const actualBase = descriptor ? `${base}(${descriptor})` : base;
+      return { base: actualBase, exclusions: splitTopLevel(rest) };
+    }
+    return { base, exclusions: splitTopLevel(inner) };
+  }
+
+  // 括弧の深さ0のみで文字列を分割
+  function splitTopLevel(str) {
+    const items = [];
+    let depth = 0, current = '';
+    for (const ch of str) {
+      if (ch === '(' || ch === '（') { depth++; current += ch; }
+      else if (ch === ')' || ch === '）') { depth--; current += ch; }
+      else if (depth === 0 && (ch === '、' || ch === ',' || ch === '，' || ch === '､')) {
+        if (current.trim()) items.push(current.trim());
+        current = '';
+      } else { current += ch; }
+    }
+    if (current.trim()) items.push(current.trim());
+    return items;
+  }
+
+  // 検索した作物がこのカテゴリから除外されているか判定
+  function isCropExcluded(normQuery, exclusions, cropParents) {
+    const normParents = (cropParents || []).map(p => toHiragana(p.toLowerCase()));
+    for (const ex of exclusions) {
+      const normEx = toHiragana(ex.trim().toLowerCase());
+      if (!normEx) continue;
+      // 直接一致
+      if (normEx === normQuery || normEx.includes(normQuery) || normQuery.includes(normEx)) return true;
+      // 上位分類として一致（例: 除外が「なばな類」で検索作物がなばな類に属する場合）
+      if (normParents.some(p => p === normEx || p.startsWith(normEx) || normEx.startsWith(p))) return true;
+    }
+    return false;
+  }
+
+  // 上位分類として適用される農薬を検索
+  function findParentMatches(query, directGrouped) {
+    const normQuery = toHiragana(query.toLowerCase());
+
+    // 上位分類を取得
+    let cropParents = [];
+    for (const [crop, parents] of Object.entries(CROP_PARENTS)) {
+      const normCrop = toHiragana(crop.toLowerCase());
+      if (normCrop.includes(normQuery) || normQuery.includes(normCrop)) {
+        cropParents = parents;
+        break;
+      }
+    }
+    if (cropParents.length === 0) return {};
+
+    const parentGrouped = {};
+    for (const [reg, entry] of Object.entries(cache)) {
+      const name = entry["農薬名"] || "";
+      // すでに直接検索でヒットしている農薬は除外
+      if (directGrouped[name]) continue;
+
+      const matchingRows = [];
+      for (const r of (entry["適用表"] || [])) {
+        const cropName = r["適用作物名"] || "";
+        const { base, exclusions } = parseCategoryName(cropName);
+        const normBase = toHiragana(base.toLowerCase());
+
+        for (const parentCat of cropParents) {
+          const normParent = toHiragana(parentCat.toLowerCase());
+          if (normBase === normParent) {
+            if (!isCropExcluded(normQuery, exclusions, cropParents)) {
+              matchingRows.push({ ...r, _parentCategory: parentCat });
+            }
+            break;
+          }
+        }
+      }
+      if (matchingRows.length > 0) {
+        parentGrouped[name] = { rows: matchingRows, reg };
+      }
+    }
+    return parentGrouped;
+  }
+
   function doSearch() {
     const query = document.getElementById("searchInput").value.trim();
     const resultDiv = document.getElementById("result");
@@ -285,45 +470,77 @@
       }
     }
 
-    const pesticides = Object.keys(grouped);
+    // 上位分類での検索
+    const parentGrouped = findParentMatches(query, grouped);
 
-    if (pesticides.length === 0) {
+    const pesticides = Object.keys(grouped);
+    const parentPesticides = Object.keys(parentGrouped);
+
+    if (pesticides.length === 0 && parentPesticides.length === 0) {
       resultDiv.innerHTML = `<div class="no-result">「${query}」に使える農薬は手持ちの中にありませんでした。</div>`;
       return;
     }
 
     const totalRows = pesticides.reduce((s, n) => s + grouped[n].rows.length, 0);
+    const totalParentRows = parentPesticides.reduce((s, n) => s + parentGrouped[n].rows.length, 0);
 
-    let html = `<div class="summary">「${query}」に使える農薬: <strong>${pesticides.length} 品目 / ${totalRows} 件</strong></div>`;
-
-    // タブ
-    html += '<div class="tabs">';
-    html += `<button class="tab-btn active" onclick="showTab('__all__', this)">すべて</button>`;
-    for (const name of pesticides) {
-      const safe = name.replace(/'/g, "\\'");
-      html += `<button class="tab-btn" onclick="showTab('${safe}', this)">${name}</button>`;
+    let html = `<div class="summary">「${query}」に使える農薬: <strong>${pesticides.length} 品目 / ${totalRows} 件</strong>`;
+    if (parentPesticides.length > 0) {
+      html += `<br><span style="font-size:0.82rem;color:#40916c">上位分類でも ${parentPesticides.length} 品目 / ${totalParentRows} 件あり（下に表示）</span>`;
     }
-    html += '</div>';
+    html += `</div>`;
 
-    // カード（全農薬）
-    html += '<div id="allCards">';
-    for (const name of pesticides) {
-      html += buildCard(name, grouped[name].rows);
-    }
-    html += '</div>';
-
-    // 個別カード
-    for (const name of pesticides) {
-      const id = "card_" + name.replace(/\s/g, "_");
-      html += `<div id="${id}" style="display:none">`;
-      html += buildCard(name, grouped[name].rows);
+    // タブ（直接一致分）
+    if (pesticides.length > 0) {
+      html += '<div class="tabs">';
+      html += `<button class="tab-btn active" onclick="showTab('__all__', this)">すべて</button>`;
+      for (const name of pesticides) {
+        const safe = name.replace(/'/g, "\\'");
+        html += `<button class="tab-btn" onclick="showTab('${safe}', this)">${name}</button>`;
+      }
       html += '</div>';
+
+      html += '<div id="allCards">';
+      for (const name of pesticides) {
+        html += buildCard(name, grouped[name].rows);
+      }
+      html += '</div>';
+
+      for (const name of pesticides) {
+        const id = "card_" + name.replace(/\s/g, "_");
+        html += `<div id="${id}" style="display:none">`;
+        html += buildCard(name, grouped[name].rows);
+        html += '</div>';
+      }
+    } else {
+      html += '<div id="allCards"></div>';
+    }
+
+    // 上位分類セクション
+    if (parentPesticides.length > 0) {
+      const normQ = toHiragana(query.toLowerCase());
+      let parentCatNames = [];
+      for (const [crop, parents] of Object.entries(CROP_PARENTS)) {
+        if (toHiragana(crop.toLowerCase()).includes(normQ) || normQ.includes(toHiragana(crop.toLowerCase()))) {
+          parentCatNames = parents;
+          break;
+        }
+      }
+      const catLabel = parentCatNames.slice(0, 2).join('・') || '上位分類';
+
+      html += `<div class="parent-section">`;
+      html += `<div class="parent-section-title">「${catLabel}」に登録された農薬 （${parentPesticides.length} 品目 / ${totalParentRows} 件）</div>`;
+      for (const name of parentPesticides) {
+        const catInfo = parentGrouped[name].rows[0]?._parentCategory || '';
+        html += buildCard(name, parentGrouped[name].rows, catInfo);
+      }
+      html += `</div>`;
     }
 
     resultDiv.innerHTML = html;
   }
 
-  function buildCard(name, rows) {
+  function buildCard(name, rows, badge) {
     const COLS = [
       ["適用作物名",       "作物名"],
       ["対象病害虫・雑草名","対象病害虫・雑草"],
@@ -340,7 +557,8 @@
     );
 
     let html = `<div class="card">`;
-    html += `<div class="card-header">🌿 ${name}</div>`;
+    const badgeHtml = badge ? `<span class="badge">${badge}として適用</span>` : '';
+    html += `<div class="card-header">🌿 ${name}${badgeHtml}</div>`;
     html += `<div class="table-wrap"><table>`;
     html += "<thead><tr>" + activeCols.map(([,label]) => `<th>${label}</th>`).join("") + "</tr></thead>";
     html += "<tbody>";
