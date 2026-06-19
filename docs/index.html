@@ -328,7 +328,19 @@
     'おくら':      ['野菜類'],
     'らっかせい':  ['野菜類'],
     '落花生':      ['野菜類'],
-    // 注: なす・だいこん・さつまいも・すいとう は野菜類から除外または対象外のため省略
+    // ─ 根菜類 → 野菜類（だいこんは野菜類から除外されているが根菜類には含まれる）─
+    'だいこん':    ['根菜類', '野菜類'],
+    '大根':        ['根菜類', '野菜類'],
+    // ─ いも類（さつまいも＝かんしょ。いも類(かんしょを除く)からは除外される）─
+    'さつまいも':  ['いも類', '野菜類'],
+    'かんしょ':    ['いも類', '野菜類'],
+    // 注: なす・すいとう は野菜類から除外または対象外のため省略
+  };
+
+  // 農薬登録での別名マッピング（除外リストの表記が異なる場合の対応）
+  const CROP_ALIASES = {
+    'さつまいも': ['かんしょ'],
+    'かんしょ':   ['さつまいも'],
   };
 
   // カテゴリ名を「ベース名」と「除外リスト」に分解
@@ -380,11 +392,15 @@
   // 検索した作物がこのカテゴリから除外されているか判定
   function isCropExcluded(normQuery, exclusions, cropParents) {
     const normParents = (cropParents || []).map(p => toHiragana(p.toLowerCase()));
+    // 別名も含めて判定（例: さつまいも → かんしょ）
+    const aliases = (CROP_ALIASES[normQuery] || []).map(a => toHiragana(a.toLowerCase()));
     for (const ex of exclusions) {
       const normEx = toHiragana(ex.trim().toLowerCase());
       if (!normEx) continue;
       // 直接一致
       if (normEx === normQuery || normEx.includes(normQuery) || normQuery.includes(normEx)) return true;
+      // 別名で一致
+      if (aliases.some(a => a === normEx || a.includes(normEx) || normEx.includes(a))) return true;
       // 上位分類として一致（例: 除外が「なばな類」で検索作物がなばな類に属する場合）
       if (normParents.some(p => p === normEx || p.startsWith(normEx) || normEx.startsWith(p))) return true;
     }
