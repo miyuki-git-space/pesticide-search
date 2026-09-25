@@ -28,6 +28,23 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
 
+    .switchbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .switchbar a {
+      flex: 1;
+      text-align: center;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 9px 10px;
+      border-radius: 8px;
+    }
+    .switchbar a.cur { background: #fff; color: #2d6a4f; }
+    .switchbar a.alt { background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,0.5); }
+
     header h1 {
       font-size: 1.1rem;
       font-weight: 700;
@@ -216,6 +233,10 @@
 <body>
 
 <header>
+  <div class="switchbar">
+    <a class="cur" href="./">🧪 農薬検索</a>
+    <a class="alt" href="seeds/">🌱 種子リスト</a>
+  </div>
   <h1>🌱 農薬適用作物検索</h1>
   <p>手持ち農薬から使える農薬を検索</p>
   <div class="search-bar">

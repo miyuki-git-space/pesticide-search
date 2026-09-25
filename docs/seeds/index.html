@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="種子リスト">
+<meta name="theme-color" content="#4a7c3a">
+<title>種子リスト</title>
+<style>
+  :root{
+    --bg:#f5f3ec; --card:#ffffff; --ink:#2f3a2c; --sub:#6b7a63;
+    --line:#e2ddce; --accent:#4a7c3a; --accent-d:#3a6330;
+    --warn:#c0492f; --warnbg:#fbeae6; --ok:#4a7c3a; --okbg:#eaf3e4;
+    --chip:#eef0e6; --chipact:#4a7c3a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    line-height:1.6;-webkit-text-size-adjust:100%}
+  header{position:sticky;top:0;z-index:10;background:var(--accent);color:#fff;
+    padding:14px 16px 12px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  @media (max-width:600px){ header{position:static} }
+  .switchbar{max-width:1100px;margin:0 auto 8px;display:flex;gap:8px}
+  .switchbar a{flex:1;text-align:center;text-decoration:none;font-size:14px;font-weight:700;
+    padding:9px 10px;border-radius:8px}
+  .switchbar a.cur{background:#fff;color:var(--accent-d)}
+  .switchbar a.alt{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.5)}
+  header h1{margin:0;font-size:20px;display:flex;align-items:center;gap:8px}
+  header .count{font-size:13px;opacity:.9;margin-top:2px}
+  .controls{max-width:1100px;margin:0 auto}
+  .searchwrap{margin:10px auto 0;max-width:1100px}
+  #search{width:100%;padding:11px 14px;font-size:16px;border:none;border-radius:8px;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.15)}
+  .filters{max-width:1100px;margin:10px auto 0;display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--chip);color:var(--ink);border:1px solid var(--line);
+    padding:5px 11px;border-radius:16px;font-size:13px;cursor:pointer;user-select:none}
+  .chip.active{background:#fff;color:var(--accent-d);border-color:#fff;font-weight:700}
+  .toolbar{max-width:1100px;margin:10px auto 0;display:flex;gap:10px;align-items:center;
+    flex-wrap:wrap;font-size:13px;color:#eef0e6}
+  .toolbar label{display:flex;align-items:center;gap:5px;cursor:pointer}
+  main{max-width:1100px;margin:0 auto;padding:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .card.used{opacity:.55}
+  .imgbox{position:relative;background:#ddd;aspect-ratio:3/4;overflow:hidden;cursor:pointer}
+  .imgbox img{width:100%;height:100%;object-fit:cover;display:block}
+  .imgbox .side{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;
+    font-size:11px;padding:2px 8px;border-radius:12px}
+  .imgbox .flip{position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,.92);
+    color:var(--ink);font-size:11px;padding:3px 9px;border-radius:12px;border:none;cursor:pointer}
+  .imgbox .flip.disabled{opacity:.4;cursor:default}
+  .body{padding:12px 13px;flex:1;display:flex;flex-direction:column;gap:7px}
+  .titlerow{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+  .name{font-weight:700;font-size:16px;line-height:1.35}
+  .yomi{font-size:11px;color:var(--sub)}
+  .tag{display:inline-block;background:var(--accent);color:#fff;font-size:11px;
+    padding:2px 9px;border-radius:12px;white-space:nowrap;flex-shrink:0}
+  .maker{font-size:12px;color:var(--sub)}
+  .badge{font-size:11px;padding:2px 8px;border-radius:10px;display:inline-block}
+  .badge.warn{background:var(--warnbg);color:var(--warn)}
+  .badge.ok{background:var(--okbg);color:var(--ok)}
+  .badge.sow{background:#e6f0d6;color:#3a6330;border:1px solid #b9d49a;font-weight:700}
+  table.spec{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:2px}
+  table.spec th{text-align:left;color:var(--sub);font-weight:500;white-space:nowrap;
+    vertical-align:top;padding:2px 8px 2px 0;width:5.2em}
+  table.spec td{vertical-align:top;padding:2px 0}
+  .feat{font-size:12.5px;color:#3d4a38;background:#f7f8f2;border-radius:8px;padding:8px 10px;margin-top:2px}
+  .cardfoot{border-top:1px solid var(--line);padding:9px 13px;display:flex;
+    flex-direction:column;gap:7px;background:#fafbf6}
+  .usedrow{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;user-select:none}
+  .memo{width:100%;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);
+    border-radius:6px;resize:vertical;font-family:inherit;min-height:32px}
+  .empty{text-align:center;color:var(--sub);padding:40px 0}
+  footer{max-width:1100px;margin:0 auto;padding:8px 16px 30px;color:var(--sub);font-size:11px}
+  /* lightbox */
+  #lb{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;z-index:50;
+    align-items:center;justify-content:center;flex-direction:column;padding:16px}
+  #lb.open{display:flex}
+  #lb img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:6px}
+  #lb .lbcap{color:#fff;margin-top:10px;font-size:14px;text-align:center}
+  #lb .lbclose{position:absolute;top:14px;right:18px;color:#fff;font-size:30px;
+    background:none;border:none;cursor:pointer;line-height:1}
+  #lb .lbnav{color:#fff;background:rgba(255,255,255,.15);border:none;font-size:14px;
+    padding:8px 16px;border-radius:8px;margin-top:12px;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <div class="controls">
+    <div class="switchbar">
+      <a class="alt" href="../">🧪 農薬検索</a>
+      <a class="cur" href="./">🌱 種子リスト</a>
+    </div>
+    <h1>🌱 種子リスト <span class="count" id="count"></span></h1>
+    <div class="searchwrap">
+      <input id="search" type="search" placeholder="品種名・メーカー・特性・よみで検索…" autocomplete="off">
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="toolbar">
+      <label><input type="checkbox" id="hideUsed"> 使い切ったものを隠す</label>
+      <label>まき時期(暖地):
+        <select id="sowMonth" style="font-size:13px;padding:2px 4px;border-radius:5px;border:none">
+          <option value="">指定なし</option>
+          <option value="now">今まけるもの</option>
+          <option value="1">1月にまける</option>
+          <option value="2">2月にまける</option>
+          <option value="3">3月にまける</option>
+          <option value="4">4月にまける</option>
+          <option value="5">5月にまける</option>
+          <option value="6">6月にまける</option>
+          <option value="7">7月にまける</option>
+          <option value="8">8月にまける</option>
+          <option value="9">9月にまける</option>
+          <option value="10">10月にまける</option>
+          <option value="11">11月にまける</option>
+          <option value="12">12月にまける</option>
+        </select>
+      </label>
+      <label>並び順:
+        <select id="sort" style="font-size:13px;padding:2px 4px;border-radius:5px;border:none">
+          <option value="cat">種類順</option>
+          <option value="name">品種名順</option>
+          <option value="expiry">有効期限が近い順</option>
+        </select>
+      </label>
+    </div>
+    <div style="max-width:1100px;margin:6px auto 0;font-size:11px;color:#dbe6d2">
+      ※「まき時期」は裏面を撮影した品種のみ・暖地(福岡)基準のおおよその目安です。
+    </div>
+  </div>
+</header>
+<main>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden>該当する種子がありません。</div>
+</main>
+<footer id="foot"></footer>
+
+<div id="lb" role="dialog" aria-modal="true">
+  <button class="lbclose" id="lbclose" aria-label="閉じる">×</button>
+  <img id="lbimg" alt="">
+  <div class="lbcap" id="lbcap"></div>
+  <button class="lbnav" id="lbflip">表 ⇔ 裏を切り替え</button>
+</div>
+
+<script>
+const IMGBASE = "img/";
+const DATA = [
+  {"品種名":"四川児菜（子持タカナ）","よみ":"しせんあーさい","種類":"からし菜","メーカー":"中原採種場","価格":"¥500","数量":"200粒","発芽率":"85%以上（24年5月）","有効期限":"発芽検定月より1年","播種時期":"2〜4月・9〜10月","特性":"コート種子。独特の辛味と食感。天ぷら・炒め物・スープに。JA福岡京築直売所(浦種苗園扱い)","表":"IMG_0086.JPEG","裏":"IMG_0087.JPEG","まき月":[9,10]},
+  {"品種名":"広茎かつお菜","よみ":"ひろくきかつおな","種類":"タカナ","メーカー":"トーホク（清原育種農場）","価格":"","数量":"9ml","発芽率":"85%以上","有効期限":"'25年3月","播種時期":"","特性":"品種番号15160-A。生産地イタリア、無消毒。正月の雑煮に欠かせない品種。鰹節の味","表":"IMG_0088.JPEG","裏":"IMG_0089.JPEG","まき月":[4,8,9]},
+  {"品種名":"大葉春菊","よみ":"おおばしゅんぎく","種類":"春菊","メーカー":"浦種苗園","価格":"¥180","数量":"20ml","発芽率":"50%以上（24年4月）","有効期限":"発芽検定月より1年","播種時期":"","特性":"厚肉大葉の豊産種。生産地デンマーク、消毒なし。JA福岡京築直売所","表":"IMG_0090.JPEG","裏":"IMG_0091.JPEG","まき月":[3,4,5,9,10]},
+  {"品種名":"レタスMIX","よみ":"","種類":"レタス","メーカー":"ニチノウ（日本農産種苗）","価格":"300円+税","数量":"6ml（約2,900粒）","発芽率":"80%以上","有効期限":"2021年2月末日","播種時期":"","特性":"5種類のレタス(ロログリーン/サラダ菜/レッドロメイン/ロロロッサ/グリーンロメイン)。キク科。生産地アメリカ","表":"IMG_0092.JPEG","裏":"IMG_0093.JPEG","まき月":[2,3,4,9,10]},
+  {"品種名":"かつお菜（瓶保存）","よみ":"かつおな","種類":"タカナ","メーカー":"（自家採種と思われる）","価格":"","数量":"","発芽率":"","有効期限":"","播種時期":"","特性":"ガラス瓶で保存された種子。正月のお雑煮に。※写真は瓶のクローズアップで詳細不明","表":"IMG_0094.JPEG","裏":""},
+  {"品種名":"F1 ブルースカイ2","よみ":"","種類":"オクラ","メーカー":"（不明）","価格":"","数量":"","発芽率":"","有効期限":"","播種時期":"","特性":"低節位から着莢、秀品多収","表":"IMG_0095.JPEG","裏":""},
+  {"品種名":"つるなしスナック2号","よみ":"","種類":"エンドウ（スナップ）","メーカー":"サカタのタネ","価格":"税込¥297","数量":"","発芽率":"","有効期限":"","播種時期":"暖地1〜3月・11〜12月／寒地3月","特性":"うどんこ病に強く肉厚で多収。つるなし・白花・早どり","表":"IMG_0096.JPEG","裏":""},
+  {"品種名":"たまねぎ 205黄（ニイマルゴ）","よみ":"","種類":"たまねぎ","メーカー":"（不明）","価格":"¥985（徳用大袋）","数量":"","発芽率":"","有効期限":"","播種時期":"8/20〜9/15まき、3月はじめどり","特性":"超極早生。辛み少なく水分多く甘い。マルチをすれば2月中旬から収穫","表":"IMG_0097.JPEG","裏":""},
+  {"品種名":"おたふく春菊","よみ":"","種類":"春菊","メーカー":"（不明）","価格":"","数量":"","発芽率":"","有効期限":"","播種時期":"","特性":"香りよくうまい。発芽適温15〜20℃。商標登録第5121770号","表":"IMG_0099.JPEG","裏":""},
+  {"品種名":"久留米ゆたか","よみ":"くるめゆたか","種類":"えんどう（実えんどう）","メーカー":"（不明）","価格":"","数量":"","発芽率":"","有効期限":"","播種時期":"","特性":"豆・サヤ濃緑色。実用種で美味","表":"IMG_0100.JPEG","裏":""},
+  {"品種名":"人参 F1楽陽 改良型","よみ":"らくよう","種類":"にんじん","メーカー":"宝種苗","価格":"税込¥396","数量":"450粒","発芽率":"75%以上（'20年5月）","有効期限":"発芽率検査月より1年","播種時期":"","特性":"ペレット種子でまきやすい。耐寒・耐病・晩抽。生産地アメリカ。播種後105〜110日、根長18cm・根重200g","表":"IMG_0101.JPEG","裏":"IMG_0102.JPEG","まき月":[4,7,8]},
+  {"品種名":"照彩小松菜","よみ":"しょうさい","種類":"小松菜","メーカー":"トーホク（清原育種農場）","価格":"","数量":"10ml","発芽率":"90%以上","有効期限":"'18年2月","播種時期":"","特性":"品種番号14881-D。年間作れる濃緑系コマツナ、人気No.1。生産地アメリカ、無農薬","表":"IMG_0103.JPEG","裏":"IMG_0104.JPEG","まき月":[3,4,5,6,7,8,9,10]},
+  {"品種名":"F1 リーガル","よみ":"","種類":"ほうれん草","メーカー":"宝種苗","価格":"税込¥198","数量":"20ml","発芽率":"75%以上（'20年5月）","有効期限":"発芽率検査月より1年","播種時期":"","特性":"ベト病抵抗性R1〜R3、生育が早く作りやすい。生産地デンマーク","表":"IMG_0105.JPEG","裏":"IMG_0106.JPEG","まき月":[9,10,11,12,1,2]},
+  {"品種名":"四季どり辛味大根 雪美人","よみ":"ゆきびじん","種類":"大根","メーカー":"サカタのタネ","価格":"","数量":"3ml（約130本）","発芽率":"85%以上","有効期限":"2018年10月末日","播種時期":"暖地2〜12月／寒地5〜9月","特性":"ミニサイズのおろし大根。タネまき後約45日。生産地韓国。実咲シリーズ925031","表":"IMG_0107.JPEG","裏":"IMG_0108.JPEG","まき月":[2,3,4,5,6,7,8,9,10]},
+  {"品種名":"にんじん 鮮紅大長","よみ":"せんこうおおなが","種類":"にんじん","メーカー":"ウタネ","価格":"200+税（税込216）","数量":"8ml","発芽率":"65%以上","有効期限":"'19年11月","播種時期":"","特性":"品種コードNo.14516。根長50cm前後、鮮明な赤色で甘み。生産地イタリア、農薬不使用。家庭菜園に最適","表":"IMG_0109.JPEG","裏":"IMG_0110.JPEG","まき月":[4,7,8]},
+  {"品種名":"にんじん 真紅金時","よみ":"しんくきんとき","種類":"にんじん","メーカー":"ウタネ（育成元:丸種）","価格":"300+税（税込324）","数量":"6ml","発芽率":"65%以上","有効期限":"'20年3月","播種時期":"7〜8月まき・11月頃から収穫","特性":"品種コードNo.60159。お正月用の人参で名声高い。根長30cm、濃紅色、極早生。生産地南アフリカ、農薬不使用。おせち料理に最適","表":"IMG_0111.JPEG","裏":"IMG_0112.JPEG","まき月":[7,8]},
+  {"品種名":"カブ 耐病ひかり","よみ":"たいびょうひかり","種類":"カブ","メーカー":"タキイ交配（宝種苗扱い）","価格":"税込¥346","数量":"3ml","発芽率":"85%以上（'20年5月）","有効期限":"発芽検査月より1年","播種時期":"","特性":"小中〜中大カブと好みのサイズで収穫できる。肌ツヤ・肉質よく、ス入り・根割れしにくい。生産地島根県。BEST SEED","表":"IMG_0113.JPEG","裏":"IMG_0114.JPEG","まき月":[2,3,8,9,10]},
+  {"品種名":"蕪 F1 CRゆきむらさき","よみ":"","種類":"カブ","メーカー":"宝種苗","価格":"税込¥396","数量":"1.5ml","発芽率":"85%以上（'20年5月）","有効期限":"発芽率検査月より1年","播種時期":"","特性":"根コブ病抵抗性で生育の早い紫白蕪。上部紫・下部白。播種後60日で球径12cm。サラダ・浅漬けに。生産地茨城県","表":"IMG_0115.JPEG","裏":"IMG_0116.JPEG","まき月":[4,5,6,9]},
+  {"品種名":"つるなしモロッコ（白花）","よみ":"","種類":"インゲン","メーカー":"タキイ種苗","価格":"","数量":"28ml（約50粒）","発芽率":"80%以上","有効期限":"2018年10月","播種時期":"タネまき5月下〜7月上旬・収穫7月下〜9月下旬","特性":"品番ASA152。元祖肉厚モロッコインゲン。つるなし・平莢、長さ14cm。生産地中国、農薬処理なし","表":"IMG_0117.JPEG","裏":"IMG_0118.JPEG","まき月":[5,8]},
+  {"品種名":"つるあり 十八ささげ","よみ":"じゅうはちささげ","種類":"ささげ（豆）","メーカー":"ウタネ","価格":"200+税（税込216）","数量":"10ml","発芽率":"80%以上","有効期限":"'19年11月","播種時期":"","特性":"つるあり。莢やわらかく風味満点。莢長30〜40cmの大長種。生産地中国。適正発芽温度20〜30℃","表":"IMG_0119.JPEG","裏":"IMG_0120.JPEG","まき月":[4,5,6]},
+  {"品種名":"浅黄九条細ねぎ","よみ":"あさぎくじょうほそねぎ","種類":"ねぎ","メーカー":"トーホク","価格":"","数量":"7ml","発芽率":"75%以上","有効期限":"'21年3月","播種時期":"春まき・秋まき可","特性":"品種番号02373。京都九条の葉ネギ。芽ネギ・葉ネギ・冬ネギまで利用可。生産地チリ、無消毒","表":"IMG_0121.JPEG","裏":"IMG_0122.JPEG","まき月":[2,3,8,9]},
+  {"品種名":"つるなしインゲン れんたろう","よみ":"","種類":"インゲン","メーカー":"サカタのタネ","価格":"","数量":"","発芽率":"80%以上","有効期限":"2019年10月","播種時期":"暖地4〜5月・8〜9月／寒地5〜7月","特性":"超多収。丸さや・濃緑・どっさり収穫。タネまき後約60〜65日。つるなし","表":"IMG_0123.JPEG","裏":""},
+  {"品種名":"滝野川ごぼう","よみ":"たきのがわごぼう","種類":"ごぼう","メーカー":"トーホク","価格":"216円","数量":"","発芽率":"","有効期限":"","播種時期":"","特性":"肌がきれいで香りが高い","表":"IMG_0124.JPEG","裏":""},
+  {"品種名":"つるなしいんげん テンダーグリーンPB","よみ":"","種類":"インゲン","メーカー":"トーホク","価格":"","数量":"","発芽率":"","有効期限":"","播種時期":"","特性":"早くから収穫できるおいしいインゲン。つるなし","表":"IMG_0125.JPEG","裏":""},
+  {"品種名":"つるなしモロッコ","よみ":"","種類":"インゲン","メーカー":"タキイ育成","価格":"","数量":"","発芽率":"","有効期限":"","播種時期":"","特性":"品番No.26772。すじがなく風味抜群。つるなし","表":"IMG_0126.JPEG","裏":""},
+  {"品種名":"剣葉ほうれん草 しゅんりょく","よみ":"けんばほうれんそう","種類":"ほうれん草","メーカー":"JAグループ","価格":"346円","数量":"","発芽率":"","有効期限":"","播種時期":"春まき・秋まき可","特性":"剣葉タイプのほうれん草。春まきと秋まきができる","表":"IMG_0127.JPEG","裏":""},
+  {"品種名":"おしん大根","よみ":"","種類":"大根","メーカー":"タキイ交配","価格":"400円+税","数量":"","発芽率":"","有効期限":"","播種時期":"春蒔き","特性":"春蒔青首総太り。ス入りが遅く肉質の良い春蒔大根","表":"IMG_0128.JPEG","裏":""},
+  {"品種名":"地這胡瓜","よみ":"じばいきゅうり","種類":"きゅうり","メーカー":"（不明）","価格":"200+税（税込216）","数量":"","発芽率":"","有効期限":"","播種時期":"夏秋蒔・よまき","特性":"霜しらず。寒さに強く霜が降るまで取れる","表":"IMG_0129.JPEG","裏":""},
+  {"品種名":"マクワ 金太郎","よみ":"きんたろう","種類":"マクワウリ（メロン）","メーカー":"タキイ種苗","価格":"¥574","数量":"60粒","発芽率":"85%以上","有効期限":"2025年10月","播種時期":"","特性":"品番AMA002。なつかしの香りとほろ甘さ。果重400gの白肉マクワ瓜。登熟日数30〜35日。生産地タイ。※商標登録","表":"IMG_0385.JPEG","裏":"IMG_0386.JPEG","まき月":[2,3,4]},
+  {"品種名":"南瓜 F1マロン700","よみ":"","種類":"かぼちゃ","メーカー":"宝種苗","価格":"¥550（野菜種子¥495）","数量":"7粒","発芽率":"80%以上（'24年10月）","有効期限":"発芽率検査月より1年","播種時期":"暖地2〜4月まき","特性":"食味最高、粉質タイプ、果重700gの中型えびす系カボチャ。受粉後40日程度で収穫。甘味強く果皮も食べられる。生産地タイ","表":"IMG_0387.JPEG","裏":"IMG_0388.JPEG","まき月":[2,3,4,8]},
+  {"品種名":"べと病に強いほうれん草 アタック","よみ":"","種類":"ほうれん草","メーカー":"トーホク（清原育種農場）","価格":"¥207","数量":"30ml","発芽率":"80%以上","有効期限":"'25年3月","播種時期":"秋まき（暖地9〜11月頃）","特性":"品種番号18245-B。べと病に強く病気に安心。寒さに耐えじっくり生育、畑に長く置ける。生産地デンマーク、メタラキシル種子粉衣1回処理。味うま","表":"IMG_0389.JPEG","裏":"IMG_0390.JPEG","まき月":[8,9,10,11,12]},
+  {"品種名":"えだまめ 早生奥原","よみ":"わせおくはら","種類":"枝豆（大豆）","メーカー":"宝種苗（Peacock）","価格":"¥220（野菜種子¥198）","数量":"30ml","発芽率":"75%以上（'24年11月）","有効期限":"発芽率検査月より1年","播種時期":"暖地・中間地・冷涼地で異なる（栽培表参照）","特性":"生育旺盛で作りやすい早生タイプ。種まき後70日位から収穫。草丈50〜60cm、中粒で甘味・風味よく3粒莢の多い豊産種。生産地北海道、農薬不使用","表":"IMG_0391.JPEG","裏":"IMG_0392.JPEG","まき月":[4,5,6]},
+  {"品種名":"おおまさりネオ","よみ":"","種類":"落花生（ラッカセイ）","メーカー":"大関種苗園（渡辺農事）","価格":"","数量":"35粒","発芽率":"75%以上","有効期限":"2026年1月","播種時期":"暖地5〜6月まき（栽培表参照）","特性":"品種登録第29271号(PVP)。甘味があり茹で落花生に向く大粒種。開花後90日で収穫。「おおまさり」後継、白絹病・茎腐病に強い。生産地千葉県、チウラム種子粉衣1回。海外持出禁止","表":"IMG_0748.JPEG","裏":"IMG_0749.JPEG","まき月":[5,6]},
+  {"品種名":"富士早生キャベツ 味富","よみ":"あじとみ","種類":"キャベツ","メーカー":"トーホク（清原育種農場）","価格":"¥473","数量":"2ml","発芽率":"80%以上","有効期限":"'26年3月","播種時期":"秋まき春どり","特性":"品種番号13601-F。秋にまいて越冬させ春にやわらかい新キャベツを収穫。耐寒性が強く越冬率も高い。甘くジューシー。生産地新潟県、無消毒。JAのたね","表":"IMG_0952.JPEG","裏":"IMG_0953.JPEG","まき月":[7,8,9]},
+  {"品種名":"広茎かつお菜（2袋目）","よみ":"ひろくきかつおな","種類":"タカナ","メーカー":"トーホク（清原育種農場）","価格":"176円","数量":"9ml","発芽率":"85%以上","有効期限":"'26年3月","播種時期":"暖地・中間地・冷涼地で異なる（栽培表参照）","特性":"品種番号15160-A。鰹節の味がすることから名付けられ正月の雑煮用に。濃緑色のちぢみ葉、うまみ豊か。生産地イタリア、無消毒。JAのたね。※品種は上の広茎かつお菜と同じ","表":"IMG_0954.JPEG","裏":"IMG_0955.JPEG","まき月":[4,8,9]}
+];
+const LS_KEY = "seedListState_v1";
+let state = {};
+try{ state = JSON.parse(localStorage.getItem(LS_KEY)||"{}"); }catch(e){ state={}; }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function keyOf(s){ return s.表 || s.品種名; }
+function st(s){ return state[keyOf(s)] || (state[keyOf(s)]={used:false,memo:""}); }
+
+// 有効期限を数値(年*12+月)に変換して期限判定
+function parseExpiry(str){
+  if(!str) return null;
+  let m = str.match(/(20\d{2})\s*年\s*(\d{1,2})?/);      // 2025年10月
+  if(!m) { let mm = str.match(/'?(\d{2})\s*年\s*(\d{1,2})?/); // '25年3月
+    if(mm){ let y=2000+parseInt(mm[1],10); let mo=mm[2]?parseInt(mm[2],10):12; return y*12+mo; } return null; }
+  let y=parseInt(m[1],10); let mo=m[2]?parseInt(m[2],10):12;
+  return y*12+mo;
+}
+const NOW = new Date();
+const NOWV = NOW.getFullYear()*12 + (NOW.getMonth()+1);
+const CURMONTH = NOW.getMonth()+1;
+function sowLabel(s){ const a=(s.まき月||[]).slice().sort((x,y)=>x-y); return a.length? a.map(m=>m+"月").join("・") : ""; }
+function sowNowBadge(s){ return (s.まき月&&s.まき月.includes(CURMONTH))? '<span class="badge sow">🌱今がまきどき</span>' : ""; }
+function expiryBadge(s){
+  const v = parseExpiry(s.有効期限);
+  if(v===null) return "";
+  if(v < NOWV) return '<span class="badge warn">期限切れの可能性</span>';
+  if(v - NOWV <= 6) return '<span class="badge warn">まもなく期限</span>';
+  return '<span class="badge ok">期限内</span>';
+}
+
+const grid=document.getElementById('grid');
+const search=document.getElementById('search');
+const filtersEl=document.getElementById('filters');
+const countEl=document.getElementById('count');
+const emptyEl=document.getElementById('empty');
+const hideUsed=document.getElementById('hideUsed');
+const sortSel=document.getElementById('sort');
+const sowSel=document.getElementById('sowMonth');
+
+// 種類フィルタ生成
+const cats = [...new Set(DATA.map(d=>d.種類).filter(Boolean))].sort();
+let activeCat="すべて";
+function buildFilters(){
+  filtersEl.innerHTML="";
+  ["すべて",...cats].forEach(c=>{
+    const b=document.createElement('span');
+    b.className="chip"+(c===activeCat?" active":"");
+    b.textContent=c;
+    b.onclick=()=>{activeCat=c;buildFilters();render();};
+    filtersEl.appendChild(b);
+  });
+}
+
+function matches(s,q){
+  if(!q) return true;
+  const hay=[s.品種名,s.よみ,s.メーカー,s.種類,s.特性,s.播種時期].join(" ").toLowerCase();
+  return q.toLowerCase().split(/\s+/).every(t=>hay.includes(t));
+}
+
+function esc(t){return (t==null?"":String(t)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function specRow(label,val){ return val? `<tr><th>${label}</th><td>${esc(val)}</td></tr>`:""; }
+
+let lbList=[], lbIdx=0, lbFront=true;
+function openLB(s){
+  lbList=[s]; lbIdx=0; lbFront=true; showLB();
+  document.getElementById('lb').classList.add('open');
+}
+function showLB(){
+  const s=lbList[lbIdx];
+  const img=(lbFront? s.表 : (s.裏||s.表));
+  document.getElementById('lbimg').src=IMGBASE+img;
+  document.getElementById('lbcap').textContent=s.品種名+"　("+(lbFront?"表":"裏")+")";
+  document.getElementById('lbflip').style.display = s.裏? "block":"none";
+}
+document.getElementById('lbclose').onclick=()=>document.getElementById('lb').classList.remove('open');
+document.getElementById('lb').onclick=(e)=>{ if(e.target.id==='lb') e.currentTarget.classList.remove('open'); };
+document.getElementById('lbflip').onclick=()=>{ lbFront=!lbFront; showLB(); };
+
+function render(){
+  const q=search.value.trim();
+  const sowVal=sowSel.value;
+  let list=DATA.filter(s=>s.種類===activeCat||activeCat==="すべて")
+               .filter(s=>matches(s,q))
+               .filter(s=>!(hideUsed.checked && st(s).used))
+               .filter(s=>{
+                 if(!sowVal) return true;
+                 const arr=s.まき月||[];
+                 if(!arr.length) return false;
+                 const m = sowVal==="now"? CURMONTH : parseInt(sowVal,10);
+                 return arr.includes(m);
+               });
+  const sv=sortSel.value;
+  list.sort((a,b)=>{
+    if(sv==="name") return (a.よみ||a.品種名).localeCompare(b.よみ||b.品種名,'ja');
+    if(sv==="expiry"){ const av=parseExpiry(a.有効期限)??999999, bv=parseExpiry(b.有効期限)??999999; return av-bv; }
+    return (a.種類||"").localeCompare(b.種類||"",'ja') || (a.品種名).localeCompare(b.品種名,'ja');
+  });
+  grid.innerHTML="";
+  list.forEach(s=>{
+    const state1=st(s);
+    const card=document.createElement('div');
+    card.className="card"+(state1.used?" used":"");
+    const hasBack=!!s.裏;
+    card.innerHTML=`
+      <div class="imgbox" data-front="1">
+        <img src="${IMGBASE}${esc(s.表)}" loading="lazy" alt="${esc(s.品種名)}">
+        <span class="side">表</span>
+        <button class="flip ${hasBack?'':'disabled'}">${hasBack?'裏を見る':'裏なし'}</button>
+      </div>
+      <div class="body">
+        <div class="titlerow">
+          <div>
+            <div class="name">${esc(s.品種名)}</div>
+            ${s.よみ?`<div class="yomi">${esc(s.よみ)}</div>`:""}
+          </div>
+          <span class="tag">${esc(s.種類||"—")}</span>
+        </div>
+        ${s.メーカー?`<div class="maker">🏢 ${esc(s.メーカー)}</div>`:""}
+        <div>${sowNowBadge(s)} ${expiryBadge(s)}</div>
+        <table class="spec">
+          ${specRow("まき時期",sowLabel(s))}
+          ${specRow("価格",s.価格)}
+          ${specRow("数量",s.数量)}
+          ${specRow("発芽率",s.発芽率)}
+          ${specRow("有効期限",s.有効期限)}
+          ${specRow("播種メモ",s.播種時期)}
+        </table>
+        ${s.特性?`<div class="feat">${esc(s.特性)}</div>`:""}
+      </div>
+      <div class="cardfoot">
+        <label class="usedrow"><input type="checkbox" class="usedchk" ${state1.used?"checked":""}> 使い切った</label>
+        <textarea class="memo" placeholder="メモ（まいた日・場所など）">${esc(state1.memo)}</textarea>
+      </div>`;
+    // image flip + lightbox
+    const imgbox=card.querySelector('.imgbox');
+    const imgEl=imgbox.querySelector('img');
+    const sideEl=imgbox.querySelector('.side');
+    const flipBtn=imgbox.querySelector('.flip');
+    let front=true;
+    function setSide(f){ front=f; imgEl.src=IMGBASE+(f? s.表 : s.裏); sideEl.textContent=f?"表":"裏"; flipBtn.textContent=f?"裏を見る":"表を見る"; }
+    if(hasBack){ flipBtn.onclick=(e)=>{e.stopPropagation();setSide(!front);}; }
+    imgEl.onclick=()=>{ openLB(s); };
+    // used
+    card.querySelector('.usedchk').onchange=(e)=>{ state1.used=e.target.checked; save(); render(); };
+    // memo
+    const ta=card.querySelector('.memo');
+    ta.onchange=()=>{ state1.memo=ta.value; save(); };
+    grid.appendChild(card);
+  });
+  countEl.textContent="全"+DATA.length+"品種中 "+list.length+"件";
+  emptyEl.hidden=list.length>0;
+  document.getElementById('foot').textContent=
+    "種子写真フォルダ内の写真から作成。使い切った状態とメモはこのブラウザに保存されます（写真を再読込しても消えません）。";
+}
+buildFilters();
+search.oninput=render;
+hideUsed.onchange=render;
+sortSel.onchange=render;
+sowSel.onchange=render;
+render();
+</script>
+</body>
+</html>
